@@ -32,7 +32,6 @@ impl FromStr for Lists {
     }
 }
 
-
 fn silver(lists: &Lists) -> usize {
     let mut distance: usize = 0;
     let length = lists.left.len();
@@ -44,6 +43,26 @@ fn silver(lists: &Lists) -> usize {
     distance
 }
 
+fn gold(lists: &Lists) -> usize {
+    let mut similarity: usize = 0;
+    let length = lists.left.len();
+
+    for i in 0..length {
+        let current = lists.left[i];
+
+        let mut in_other: usize = 0;
+        for j in 0..length {
+            // TODO: abuse the fact that lists are sorted
+            if lists.right[j] == current {
+                in_other += 1;
+            }
+        }
+
+        similarity += current * in_other;
+    }
+
+    similarity
+}
 
 fn main() -> io::Result<()> {
     let input = read_input()?;
@@ -51,6 +70,7 @@ fn main() -> io::Result<()> {
 
     //println!("{:?}", lists);
     println!("silver: {}", silver(&lists));
+    println!("gold: {}", gold(&lists));
 
     Ok(())
 }
