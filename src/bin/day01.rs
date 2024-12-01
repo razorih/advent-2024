@@ -52,9 +52,13 @@ fn gold(lists: &Lists) -> usize {
 
         let mut in_other: usize = 0;
         for j in 0..length {
-            // TODO: abuse the fact that lists are sorted
             if lists.right[j] == current {
                 in_other += 1;
+            }
+
+            // lists are sorted, can't find current number anymore
+            if lists.right[j] > current {
+                break;
             }
         }
 
