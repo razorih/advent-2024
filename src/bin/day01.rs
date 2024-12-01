@@ -47,13 +47,23 @@ fn gold(lists: &Lists) -> usize {
     let mut similarity: usize = 0;
     let length = lists.left.len();
 
+    let mut skip_index: usize = 0;
     for i in 0..length {
         let current = lists.left[i];
+        let mut first = true;
 
         let mut in_other: usize = 0;
-        for j in 0..length {
+        for j in skip_index..length {
             if lists.right[j] == current {
                 in_other += 1;
+
+                // if this is the first time we see `current` number
+                // it means that everything below index `j` are smaller than `current`.
+                // thus in the future we can skip directly to this index 
+                if first {
+                    skip_index = j;
+                    first = false;
+                }
             }
 
             // lists are sorted, can't find current number anymore
