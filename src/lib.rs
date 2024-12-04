@@ -1,5 +1,7 @@
 use std::{io, path::{Path, PathBuf}};
 
+pub mod grid;
+
 pub fn read_input() -> io::Result<String> {
     let filename = get_filename_from_args()?;
     let resolved = resolve_path(&filename)?;
