@@ -66,8 +66,42 @@ fn check_xmas(grid: &StringGrid, col: usize, row: usize) -> usize {
     correct.into_iter().filter(|&it| it == 3).count()
 }
 
-fn silver(input: &str) -> usize {
-    let grid = StringGrid::new(input);
+fn check_mas(grid: &StringGrid, col: usize, row: usize) -> usize {
+    // x-mases are centered around 'A's
+    if grid.at(col, row) != Some('A') {
+        return 0
+    }
+
+    let mut count = 0;
+
+    let diag = [grid.at_offset(col, row, 1, 1), grid.at_offset(col, row, -1, -1)];
+    let antidiag = [grid.at_offset(col, row, 1, -1), grid.at_offset(col, row, -1, 1)];
+
+    // check if diagonal and antidiagonal are both valid
+    if diag == [Some('S'), Some('M')] || diag == [Some('M'), Some('S')] {
+        count += 1;
+    }
+
+    if antidiag == [Some('S'), Some('M')] || antidiag == [Some('M'), Some('S')] {
+        count += 1;
+    }
+
+    if count == 2 { 1 } else { 0 }
+}
+
+fn gold(grid: &StringGrid) -> usize {
+    let mut mases = 0;
+
+    for col in 0..grid.row_len() {
+        for row in 0..grid.row_len() {
+            mases += check_mas(&grid, col, row);
+        }
+    }
+
+    mases
+}
+
+fn silver(grid: &StringGrid) -> usize {
     let mut xmases = 0;
 
     for col in 0..grid.row_len() {
@@ -81,8 +115,10 @@ fn silver(input: &str) -> usize {
 
 fn main() -> io::Result<()> {
     let input = read_input()?;
-
-    println!("silver: {}", silver(&input));
+    let grid = StringGrid::new(&input);
+    
+    println!("silver: {}", silver(&grid));
+    println!("gold: {}", gold(&grid));
 
     Ok(())
 }
