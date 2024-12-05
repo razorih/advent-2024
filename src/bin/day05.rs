@@ -3,12 +3,13 @@ use std::io;
 use advent::read_input;
 
 /// Order from string "before|after"
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 struct Order {
     before: usize,
     after: usize,
 }
 
+#[derive(Debug)]
 enum Validity {
     Valid,
     Invalid,
@@ -67,7 +68,7 @@ fn parse(input: &str) -> (Vec<Order>, Vec<Update>) {
 
         if parsing_orders {
             let (first, second) = line.split_once('|')
-                .map(|(a, b)| (a.parse::<usize>().unwrap(), b.parse::<usize>().unwrap()))
+                .map(|(a, b)| (a.parse().unwrap(), b.parse().unwrap()))
                 .unwrap();
             orders.push(Order::new(first, second));
         } else {
@@ -108,14 +109,44 @@ fn silver(orders: &[Order], updates: &[Update]) -> usize {
     result
 }
 
+fn gold(orders: &[Order], updates: &mut [Update]) -> usize {
+    let mut result = 0;
+
+    for update in updates.iter_mut() {
+        // whether to include this update in final result
+        let mut include = false;
+
+        // analyze pairs of a number and every number after it
+        for i in 0..update.numbers.len() {
+            for j in i..update.numbers.len() {
+                if i == j { continue; }
+
+                for order in orders {
+                    match order.validate(update.numbers[i], update.numbers[j]) {
+                        Validity::Valid => continue, // don't care in gold
+                        Validity::Invalid => {
+                            // invalid order, swap numbers to make it valid
+                            update.numbers.swap(i, j);
+                            include = true;
+                        },
+                        Validity::DontCare => continue,
+                    }
+                }
+            }
+        }
+
+        if include { result += update.mid() }
+    }
+
+    result
+}
+
 fn main() -> io::Result<()> {
     let input = read_input()?;
-    let (orders, updates) = parse(&input);
-
-    // println!("orders: {:#?}", orders);
-    // println!("updates: {:#?}", updates);
+    let (orders, mut updates) = parse(&input);
 
     println!("silver: {}", silver(&orders, &updates));
+    println!("gold: {}", gold(&orders, &mut updates));
 
     Ok(())
 }
