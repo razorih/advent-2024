@@ -70,7 +70,7 @@ fn silver(grid: &Grid<char>) -> usize {
 
 fn main() -> io::Result<()> {
     let input = read_input()?;
-    let grid = Grid::new(&input, |c| c);
+    let grid = Grid::new(&input, |c, _| c);
 
     println!("silver: {}", silver(&grid));
     println!("gold: {}", gold(&grid));

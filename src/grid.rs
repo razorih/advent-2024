@@ -1,19 +1,20 @@
 #[derive(Debug)]
 pub struct Grid<T> {
-    content: Vec<T>,
+    pub content: Vec<T>,
     width: usize,
     height: usize,
 }
 
 impl<T: Copy> Grid<T> {
-    pub fn new(content: &str, transform: impl Fn(char) -> T) -> Self {
+    pub fn new(content: &str, transform: impl Fn(char, (usize, usize)) -> T) -> Self {
         // count number of lines (ignoring empty lines) and length with of first line
         let height = content.lines().filter(|line| !line.is_empty()).count();
         let width = content.lines().next().unwrap().len();
 
         let content: Vec<T> = content.chars()
-            .filter(|c| c.is_alphanumeric())
-            .map(transform)
+            .filter(|c| !c.is_ascii_whitespace())
+            .enumerate()
+            .map(|(i, c)| transform(c, (i % width, i / width)))
             .collect();
 
         // make sure we have an actual grid
@@ -54,6 +55,11 @@ pub struct GridEntry<'a, T> {
 
 impl<'a, T: Copy> GridEntry<'a, T> {
     pub fn at_offset(&self, col_offset: isize, row_offset: isize) -> Option<T> {
+        self.offset(col_offset, row_offset).map(|thing| thing.0)
+    }
+
+    /// Returns item at offset and its true column and row index if valid
+    pub fn offset(&self, col_offset: isize, row_offset: isize) -> Option<(T, usize, usize)> {
         let Some(true_col) = self.col.checked_add_signed(col_offset)
             else { return None };
         let Some(true_row) = self.row.checked_add_signed(row_offset)
@@ -62,6 +68,10 @@ impl<'a, T: Copy> GridEntry<'a, T> {
         if true_col >= self.grid.width() { return None }
         if true_row >= self.grid.height() { return None }
 
-        self.grid.at(true_col, true_row)
+        if let Some(thing) = self.grid.at(true_col, true_row) {
+            Some((thing, true_col, true_row))
+        } else {
+            None
+        }
     }
 }
