@@ -20,7 +20,7 @@ impl Tile {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Direction {
     Up,
     Down,
@@ -40,7 +40,7 @@ impl Direction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Guard {
     col: usize,
     row: usize,
@@ -120,11 +120,118 @@ fn silver(map: &mut Map) -> usize {
     visited_coords.len()
 }
 
+fn gold(map: &mut Map) -> usize {
+    // observations:
+    // - guard is in a loop if she returns to the inserted obstacle
+    // - obstacles can only be inserted in front of the guard
+
+    let original_guard = map.guard;
+    let mut ways = 0;
+
+    // positions of past inserted obstacles
+    let mut tried: HashSet<(usize, usize)> = HashSet::new();
+
+    loop {
+        // position of obstacle inserted during this iteration
+        let mut obstacle: Option<(usize, usize, Direction)> = None;
+        // reset map
+        map.guard = original_guard;
+
+        // how many iterations ago was an obstacle inserted
+        let mut inserted_since: usize = 0;
+
+        // walk until out of bounds or loop is encountered
+        // each iteration either turns guard to the right
+        // or walks one step forward
+        loop {
+            let entry = map.grid.entry(map.guard.col, map.guard.row);
+            let walk_ind: (isize, isize) = match map.guard.dir {
+                Direction::Up => (0, -1),
+                Direction::Down => (0, 1),
+                Direction::Left => (-1, 0),
+                Direction::Right => (1, 0),
+            };
+            inserted_since += 1;
+
+            // catch scuffed loops
+            if inserted_since >= 10_000 {
+                ways += 1;
+                break
+            }
+
+            // println!("{:?}", map.guard);
+
+            // Peek a tile in front the guard
+            match entry.offset(walk_ind.0, walk_ind.1) {
+                Some((Tile::Empty, col, row)) => {
+                    // There may be a inserted obstacle in front of us now
+                    // check if we need to turn because of it
+                    if let Some((obs_col, obs_row, orig_dir)) = obstacle {
+                        if obs_col == col && obs_row == row {
+                            // println!("virtual obstacle! turning");
+
+                            // check if we're looping
+                            if inserted_since > 1 && orig_dir == map.guard.dir {
+                                // println!("saw this virtual obstacle {} turns ago", inserted_since);
+                                ways += 1;
+                                break
+                            }
+
+                            map.guard.dir = map.guard.dir.turn();
+
+                            // moving forward will be handled next iter
+                            continue;
+                        }
+                    }
+
+                    // check if obstacle can be inserted here
+                    if obstacle.is_none() && !tried.contains(&(col, row)) {
+                        // we haven't tried to insert obstacle here yet
+                        // println!("inserted obstacle at ({}, {})", col, row);
+                        obstacle = Some((col, row, map.guard.dir));
+                        tried.insert((col, row));
+                        inserted_since = 0;
+                        continue;
+                    }
+
+                    // Move guard forward
+                    map.guard.col = col;
+                    map.guard.row = row;
+                },
+                Some((Tile::Obstacle, _, _)) => {
+                    // println!("obstacle! turning");
+                    map.guard.dir = map.guard.dir.turn();
+                },
+                None => {
+                    // guard walked out of bounds
+                    // and no obstacle was inserted
+                    //
+                    // this is identical to exit condition in silver()
+                    if obstacle.is_none() {
+                        return ways;
+                    }
+
+                    // obstacle was inserted, but guard walked out of bounds
+                    // try next obstacle position
+                    // println!("out of bounds!");
+                    break;
+                },
+                _ => panic!("guard tile needs to be removed"),
+            }
+        }
+    }
+}
+
 fn main() -> io::Result<()> {
     let input = read_input()?;
     let mut map = parse(&input);
+    let original_guard = map.guard;
 
     println!("silver: {}", silver(&mut map));
+
+    // reset guard position
+    map.guard = original_guard;
+    println!("gold: {}", gold(&mut map));
 
     Ok(())
 }
