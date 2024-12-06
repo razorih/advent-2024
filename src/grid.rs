@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Grid<T> {
     pub content: Vec<T>,
     width: usize,
@@ -28,12 +28,21 @@ impl<T: Copy> Grid<T> {
     }
 
     pub fn at(&self, col: usize, row: usize) -> Option<T> {
-        let start = col + row * self.width;
-        self.content.get(start).copied()
+        let index = col + row * self.width;
+        self.content.get(index).copied()
+    }
+
+    pub fn at_mut(&mut self, col: usize, row: usize) -> Option<&mut T> {
+        let index = col + row * self.width;
+        self.content.get_mut(index)
     }
 
     pub fn entry(&self, col: usize, row: usize) -> GridEntry<'_, T> {
         GridEntry { grid: self, col, row }
+    }
+
+    pub fn entry_mut(&mut self, col: usize, row: usize) -> GridEntryMut<'_, T> {
+        GridEntryMut { grid: self, col, row }
     }
 
     pub fn width(&self) -> usize {
@@ -53,6 +62,7 @@ pub struct GridEntry<'a, T> {
     row: usize,
 }
 
+// todo: get rid of Copy bound and make callers rely on .copied() ?
 impl<'a, T: Copy> GridEntry<'a, T> {
     pub fn at_offset(&self, col_offset: isize, row_offset: isize) -> Option<T> {
         self.offset(col_offset, row_offset).map(|thing| thing.0)
@@ -69,6 +79,42 @@ impl<'a, T: Copy> GridEntry<'a, T> {
         if true_row >= self.grid.height() { return None }
 
         if let Some(thing) = self.grid.at(true_col, true_row) {
+            Some((thing, true_col, true_row))
+        } else {
+            None
+        }
+    }
+}
+
+// allow converting mutable grid entry into immutable one
+impl<'a, T> From<GridEntryMut<'a, T>> for GridEntry<'a, T> {
+    fn from(value: GridEntryMut<'a, T>) -> Self {
+        GridEntry { grid: value.grid, col: value.col, row: value.row }
+    }
+}
+
+pub struct GridEntryMut<'a, T> {
+    grid: &'a mut Grid<T>,
+    col: usize,
+    row: usize,
+}
+
+impl<T: Copy> GridEntryMut<'_, T> {
+    pub fn at_offset_mut(&mut self, col_offset: isize, row_offset: isize) -> Option<&mut T> {
+        self.offset_mut(col_offset, row_offset).map(|thing| thing.0)
+    }
+
+    /// Returns item at offset and its true column and row index if valid
+    pub fn offset_mut(&mut self, col_offset: isize, row_offset: isize) -> Option<(&mut T, usize, usize)> {
+        let Some(true_col) = self.col.checked_add_signed(col_offset)
+            else { return None };
+        let Some(true_row) = self.row.checked_add_signed(row_offset)
+            else { return None };
+
+        if true_col >= self.grid.width() { return None }
+        if true_row >= self.grid.height() { return None }
+
+        if let Some(thing) = self.grid.at_mut(true_col, true_row) {
             Some((thing, true_col, true_row))
         } else {
             None
