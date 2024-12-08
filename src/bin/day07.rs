@@ -35,7 +35,12 @@ fn parse(input: &str) -> Vec<Equation> {
 }
 
 fn concat(a: usize, b: usize) -> usize {
-    format!("{}{}", a, b).parse().unwrap()
+    // https://stackoverflow.com/a/12700533
+    let mut pow: usize = 10;
+    while b >= pow {
+        pow *= 10;
+    }
+    return a * pow + b;
 }
 
 fn solve<const GOLD: bool>(equations: &[Equation]) -> usize {
