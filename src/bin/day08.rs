@@ -8,7 +8,7 @@ enum Tile {
     Antenna(char),
 }
 
-fn silver(grid: &Grid<Tile>) -> usize {
+fn solve(grid: &Grid<Tile>, gold: bool) -> usize {
     // Gather all (frequency, [position])'s into a hashmap
     let mut antennas: HashMap<char, Vec<(usize, usize)>> = HashMap::new();
     for (pos, tile) in grid.iter_indexed() {
@@ -45,14 +45,20 @@ fn silver(grid: &Grid<Tile>) -> usize {
                 // - first->second
                 // - second->first
 
+                // in gold, keep adding antinodes until out of bounds
+                let mut n = if gold { 1 } else { 2 };
+                let mut m = if gold { 1 } else { 2 };
+
                 let entry = grid.entry(first.0, first.1);
-                if let Some((_, anti_col, anti_row)) = entry.offset(2*diff.0, 2*diff.1) {
+                while let Some((_, anti_col, anti_row)) = entry.offset(n*diff.0, n*diff.1) {
                     antinodes.insert((anti_col, anti_row));
+                    if gold { n += 1; } else { break }
                 }
 
                 let entry = grid.entry(second.0, second.1);
-                if let Some((_, anti_col, anti_row)) = entry.offset(-(2*diff.0), -(2*diff.1)) {
+                while let Some((_, anti_col, anti_row)) = entry.offset(-(m*diff.0), -(m*diff.1)) {
                     antinodes.insert((anti_col, anti_row));
+                    if gold { m += 1; } else { break }
                 }
 
                 // println!("{:?}", diff);
@@ -74,7 +80,8 @@ fn main() -> io::Result<()> {
         }
     });
 
-    println!("silver: {}", silver(&grid));
+    println!("silver: {}", solve(&grid, false));
+    println!("gold: {}", solve(&grid, true));
 
     Ok(())
 }
