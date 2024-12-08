@@ -34,7 +34,11 @@ fn parse(input: &str) -> Vec<Equation> {
         .collect()
 }
 
-fn silver(equations: &[Equation]) -> usize {
+fn concat(a: usize, b: usize) -> usize {
+    format!("{}{}", a, b).parse().unwrap()
+}
+
+fn solve<const GOLD: bool>(equations: &[Equation]) -> usize {
     let mut result = 0;
 
     for eq in equations {
@@ -44,7 +48,6 @@ fn silver(equations: &[Equation]) -> usize {
         let mut stack: Vec<(usize, &[usize])> = Vec::new();
 
         // seed the stack
-        stack.push((ops[0], &ops[1..]));
         stack.push((ops[0], &ops[1..]));
 
         while let Some((total, rem)) = stack.pop() {
@@ -65,8 +68,11 @@ fn silver(equations: &[Equation]) -> usize {
             }
 
             // discover next combinations
-            stack.push((rem[0] + total, &rem[1..]));
-            stack.push((rem[0] * total, &rem[1..]));
+            stack.push((total + rem[0], &rem[1..]));
+            stack.push((total * rem[0], &rem[1..]));
+            if GOLD {
+                stack.push((concat(total, rem[0]), &rem[1..]));
+            }
         }
     }
 
@@ -78,7 +84,8 @@ fn main() -> io::Result<()> {
     let equations = parse(&input);
 
     // println!("eqs: {:?}", equations);
-    println!("silver: {}", silver(&equations));
+    println!("silver: {}", solve::<false>(&equations));
+    println!("gold: {}", solve::<true>(&equations));
 
     Ok(())
 }
