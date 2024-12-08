@@ -52,6 +52,14 @@ impl<T: Copy> Grid<T> {
     pub fn height(&self) -> usize {
         self.height
     }
+
+    pub fn iter_indexed(&self) -> impl Iterator<Item = ((usize, usize), &T)> {
+        let width = self.width();
+        self.content.iter().enumerate().map(move |(i, c)| {
+            let pos = (i % width, i / width);
+            (pos, c)
+        })
+    }
 }
 
 /// Helper for working with offsets
