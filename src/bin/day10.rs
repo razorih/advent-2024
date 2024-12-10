@@ -2,7 +2,7 @@ use std::{collections::{HashSet, VecDeque}, io};
 
 use advent::{grid::Grid, read_input};
 
-fn count_trailheads(grid: &Grid<u32>, start: (usize, usize)) -> usize {
+fn count_trailheads<const GOLD: bool>(grid: &Grid<u32>, start: (usize, usize)) -> usize {
     let mut score = 0;
 
     let mut queue = VecDeque::new();
@@ -10,7 +10,11 @@ fn count_trailheads(grid: &Grid<u32>, start: (usize, usize)) -> usize {
     let mut explored = HashSet::new();
 
     while let Some((col, row)) = queue.pop_back() {
-        if explored.contains(&(col, row)) {
+        // silver only: check if we're overlapping with some other trail.
+        //
+        // in gold this is allowed.
+        // (note that `explored` still grows)
+        if explored.contains(&(col, row)) && !GOLD {
             continue
         }
 
@@ -47,7 +51,19 @@ fn silver(grid: &Grid<u32>) -> usize {
 
     for (position, height) in grid.iter_indexed() {
         if *height == 0 {
-            trailheads += count_trailheads(grid, position);
+            trailheads += count_trailheads::<false>(grid, position);
+        }
+    }
+
+    trailheads
+}
+
+fn gold(grid: &Grid<u32>) -> usize {
+    let mut trailheads = 0;
+
+    for (position, height) in grid.iter_indexed() {
+        if *height == 0 {
+            trailheads += count_trailheads::<true>(grid, position);
         }
     }
 
@@ -59,6 +75,7 @@ fn main() -> io::Result<()> {
     let grid = Grid::new(&input, |c, _| c.to_digit(10).unwrap());
 
     println!("silver: {}", silver(&grid));
+    println!("gold: {}", gold(&grid));
 
     Ok(())
 }
