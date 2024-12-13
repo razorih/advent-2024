@@ -89,7 +89,7 @@ fn solve_machine(machine: &Machine) -> Option<usize> {
     }
 }
 
-fn silver(machines: &[Machine]) -> usize {
+fn solve(machines: &[Machine]) -> usize {
     let mut total = 0;
     for machine in machines {
         if let Some(tokens) = solve_machine(&machine) {
@@ -102,9 +102,16 @@ fn silver(machines: &[Machine]) -> usize {
 
 fn main() -> io::Result<()> {
     let input = read_input()?;
-    let machines = parse(&input);
+    let mut machines = parse(&input);
 
-    println!("silver: {}", silver(&machines));
+    println!("silver: {}", solve(&machines));
+
+    // prepare for gold
+    for machine in &mut machines {
+        machine.prize.0 += 10000000000000;
+        machine.prize.1 += 10000000000000;
+    }
+    println!("gold: {}", solve(&machines));
 
     Ok(())
 }
