@@ -33,13 +33,15 @@ impl Dir {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Node {
     // cumulative cost until this node
     cost: usize,
     // metadata
     pos: (usize, usize),
     dir: Dir,
+    // gold only, list of all past coordinates visited on this path
+    past: Vec<(usize, usize)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -48,12 +50,13 @@ struct Visited {
     dir: Dir,
 }
 
-impl From<Node> for Visited {
-    fn from(value: Node) -> Self {
+impl From<&Node> for Visited {
+    fn from(value: &Node) -> Self {
         Self { pos: value.pos, dir: value.dir }
     }
 }
 
+// custom comparator for Node since it contains a lot of metadata
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // reversed order for min-heap
@@ -67,28 +70,35 @@ impl PartialOrd for Node {
     }
 }
 
-fn silver(grid: &Grid<Tile>) -> usize {
+fn solve(grid: &Grid<Tile>) -> (usize, usize) {
     // uniform cost search
 
     let start = grid.find_one_pos_by(|it| it == Tile::Start).unwrap();
 
-    let node = Node { cost: 0, pos: start, dir: Dir::East };
+    let node = Node { cost: 0, pos: start, dir: Dir::East, past: vec![start] };
     let mut frontier: BinaryHeap<Node> = BinaryHeap::new();
     let mut expanded: HashSet<Visited> = HashSet::new();
 
     frontier.push(node);
 
+    let mut global_min = usize::MAX;
+
+    let mut paths = Vec::new();
     while let Some(node) = frontier.pop() {
-        //println!("frontier has: {}", frontier.len());
         let curr = grid.entry(node.pos.0, node.pos.1);
 
-        // reached end, return current cumulative cost
+        // reached end
         if curr.at_offset(0, 0) == Some(Tile::End) {
-            return node.cost
+            // UCS will always find global minimum first?
+            if node.cost <= global_min {
+                global_min = node.cost;
+                paths.push(node); // record this node's path for the future
+            }
+            continue;
         }
 
         // mark current as visited
-        expanded.insert(node.into());
+        expanded.insert((&node).into());
 
         // discover next nodes
         for next_dir in node.dir.avail_dirs() {
@@ -99,15 +109,25 @@ fn silver(grid: &Grid<Tile>) -> usize {
             };
 
             let (dc, dr) = next_dir.as_offset();
+
             if let Some((next_tile, next_col, next_row)) = curr.offset(dc, dr) {
                 if next_tile == Tile::Empty || next_tile == Tile::End {
+                    // create new node for next iterations
                     let newnode = Node {
                         cost: node.cost + cost,
                         pos: if moves { (next_col, next_row) } else { node.pos },
                         dir: next_dir,
+                        past: {
+                            let mut cloned = node.past.clone();
+                            if moves {
+                                cloned.push((next_col, next_row));
+                            }
+                            cloned
+                        },
                     };
 
-                    if !expanded.contains(&newnode.into()) {
+                    // expand frontier if we haven't been there before
+                    if !expanded.contains(&(&newnode).into()) {
                         frontier.push(newnode);
                     }
                 }
@@ -115,7 +135,14 @@ fn silver(grid: &Grid<Tile>) -> usize {
         }
     }
 
-    unreachable!()
+    // now, "paths" contains all paths with minimum cost with associated paths
+    // merge them all into a set and calculate number of unique coordinates
+    let mut uniq: HashSet<(usize, usize)> = HashSet::new();
+    for path in paths.into_iter() {
+        uniq.extend(path.past.into_iter());
+    }
+
+    (global_min, uniq.len())
 }
 
 fn main() -> io::Result<()> {
@@ -130,7 +157,9 @@ fn main() -> io::Result<()> {
         }
     });
 
-    println!("silver: {}", silver(&grid));
+    let (silver, gold) = solve(&grid);
+    println!("silver: {}", silver);
+    println!("gold: {}", gold);
 
     Ok(())
 }
