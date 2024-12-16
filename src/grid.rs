@@ -60,6 +60,18 @@ impl<T: Copy> Grid<T> {
             (pos, c)
         })
     }
+
+    /// Find position of one item by some predicate.
+    ///
+    /// Useful for finding starting positions etc..
+    pub fn find_one_pos_by(&self, pred: impl Fn(T) -> bool) -> Option<(usize, usize)> {
+        for (pos, &t) in self.iter_indexed() {
+            if pred(t) {
+                return Some(pos)
+            }
+        }
+        None
+    }
 }
 
 /// Helper for working with offsets
