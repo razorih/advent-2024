@@ -11,6 +11,7 @@ struct Robot {
 fn parse(input: &str) -> Vec<Robot> {
     let mut robots = Vec::new();
 
+    // parse "T,T" pair
     fn parse_pair<T>(pair: &str) -> (T, T)
     where
         T: FromStr + Debug,
@@ -38,11 +39,10 @@ fn parse(input: &str) -> Vec<Robot> {
 
 fn simulate_robots(robots: &mut [Robot], width: usize, height: usize) {
     for robot in robots {
-        // assume that velocity < grid_size
         let (x, y) = (robot.pos.0 as isize, robot.pos.1 as isize);
         let (vx, vy) = robot.vel;
 
-        // calculate new position and find positive modulo
+        // calculate new position and find first positive modulo nx
         // so that 0 <= nx < width
         let nx = (x + vx).rem_euclid(width as isize);
         let ny = (y + vy).rem_euclid(height as isize);
@@ -56,37 +56,61 @@ fn pause() {
     io::stdin().read(&mut [0]).unwrap();
 }
 
-#[allow(dead_code)]
 fn print_robots(robots: &[Robot], width: usize, height: usize) {
-    // take stdout lock for faster printing
+    // we'll be printing one character at a time,
+    // take stdout lock so it's fast
     let mut lock = io::stdout().lock();
     for row in 0..height {
         for col in 0..width {
             // unfortunate position check
             let has_robot = robots.into_iter().any(|robot| robot.pos == (col, row));
-            if has_robot {
-                let _ = write!(lock, "█");
-            } else {
-                let _ = write!(lock, " ");
-            }
+            let marker = if has_robot { "█" } else { " " }.as_bytes();
+
+            let _ = lock.write(marker);
         }
-        let _ = write!(lock, "\n");
+        let _ = lock.write(b"\n");
     }
-    let _ = write!(lock, "\n\n");
+    let _ = lock.write(b"\n\n");
 }
 
-// whether running a small test grid
-const TEST: bool = false;
+fn calculate_robot_variance(robots: &[Robot]) -> (f64, f64) {
+    // theory: robots clumped together => small variance
+    // calculate column and row variance separately
+    let n = robots.len() as f64;
+    let pos_sum = robots.into_iter().fold((0, 0), |acc, robot| (acc.0 + robot.pos.0, acc.1 + robot.pos.1));
 
-fn silver(robots: &mut [Robot]) -> usize {
-    let (width, height) = if TEST { (11, 7) } else { (101, 103) };
+    let mean = (pos_sum.0 as f64 / n, pos_sum.1 as f64 / n);
+    let var = robots.into_iter().fold((0.0, 0.0), |acc, robot| {
+        (
+            acc.0 + (robot.pos.0 as f64 - mean.0)*(robot.pos.0 as f64 - mean.0),
+            acc.1 + (robot.pos.1 as f64 - mean.1)*(robot.pos.1 as f64 - mean.1),
+        )
+    });
+    let var = (var.0 / (n-1.), var.1 / (n-1.));
 
-    for _second in 0..100 {
+    var
+}
+
+fn solve<const GOLD: bool>(robots: &mut [Robot]) -> usize {
+    let (width, height) = (101, 103);
+    let total_seconds = if GOLD { 20_000 } else { 100 };
+
+    for second in 0..total_seconds {
         simulate_robots(robots, width, height);
-        //print_robots(robots, width, height);
-        //pause()
+
+        if GOLD {
+            let (var_x, _var_y) = calculate_robot_variance(robots);
+
+            // noisy grid has column variance around 800
+            if var_x < 350. {
+                println!("suspicious x variance! var: {var_x}, second: {}", second + 1);
+                // visually see if this is a tree, just press ctrl-c when you see it
+                print_robots(robots, width, height);
+            }
+        }
     }
 
+    // silver only
     // find each robot's quadrant
     let mut quads: [usize; 4] = [0, 0, 0, 0];
 
@@ -110,7 +134,7 @@ fn main() -> io::Result<()> {
     let input = read_input()?;
     let mut robots = parse(&input);
 
-    println!("silver: {}", silver(&mut robots));
+    println!("silver: {}", solve::</* false */true>(&mut robots));
     Ok(())
 }
 
