@@ -74,6 +74,16 @@ impl<T: Copy> Grid<T> {
     }
 }
 
+impl<T: Default + Clone> Grid<T> {
+    pub fn empty(width: usize, height: usize) -> Self {
+        Self {
+            content: vec![T::default(); width * height],
+            width,
+            height,
+        }
+    }
+}
+
 /// Helper for working with offsets
 #[derive(Debug)]
 pub struct GridEntry<'a, T> {
