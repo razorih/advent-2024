@@ -12,18 +12,27 @@ enum Tile {
 fn parse(input: &str, count: usize) -> Grid<Tile> {
     let mut grid: Grid<Tile> = Grid::empty(71, 71);
 
-    for line in input.lines().take(count) {
-        if line.is_empty() { continue }
-        let (col, row) = line.split_once(',').unwrap();
-        let col: usize = col.parse().unwrap();
-        let row: usize = row.parse().unwrap();
-
+    let corruptor = corruptor(input);
+    for (col, row) in corruptor.take(count) {
         if let Some(space) = grid.at_mut(col, row) {
             *space = Tile::Corrupted;
         }
     }
 
     grid
+}
+
+// create an iterator that yields (col, row) pairs of corrupted coordinates
+fn corruptor(input: &str) -> impl Iterator<Item = (usize, usize)> + use<'_> {
+    input.lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let (col, row) = line.split_once(',').unwrap();
+            let col: usize = col.parse().unwrap();
+            let row: usize = row.parse().unwrap();
+
+            (col, row)
+        })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -53,7 +62,7 @@ impl PartialOrd for Node {
     }
 }
 
-fn silver(grid: &Grid<Tile>) -> usize {
+fn solve(grid: &Grid<Tile>) -> Option<usize> {
     // basic uniform cost search
     let mut frontier: BinaryHeap<Node> = BinaryHeap::new();
     let mut visited: HashSet<(usize, usize)> = HashSet::new();
@@ -64,7 +73,7 @@ fn silver(grid: &Grid<Tile>) -> usize {
 
     while let Some(node) = frontier.pop() {
         if node.pos == (70, 70) {
-            return node.cost
+            return Some(node.cost)
         }
 
         visited.insert(node.pos);
@@ -74,9 +83,30 @@ fn silver(grid: &Grid<Tile>) -> usize {
         for (dc, dr) in dirs {
             let Some((Tile::Safe, col, row)) = here.offset(dc, dr) else { continue };
 
+            // very inefficient, need other data structure here
             let in_frontier = frontier.iter().any(|node| node.pos == (col, row));
             if !visited.contains(&(col, row)) && !in_frontier {
                 frontier.push(Node { pos: (col, row), cost: node.cost + 1 });
+            }
+        }
+    }
+
+    // frontier exhausted, no path
+    None
+}
+
+fn gold<I>(corruptor: I) -> (usize, usize)
+where
+    I: Iterator<Item = (usize, usize)>
+{
+    let mut grid: Grid<Tile> = Grid::empty(71, 71);
+
+    for (corrupt_col, corrupt_row) in corruptor {
+        if let Some(place) = grid.at_mut(corrupt_col, corrupt_row) {
+            *place = Tile::Corrupted;
+
+            if solve(&grid).is_none() {
+                return (corrupt_col, corrupt_row)
             }
         }
     }
@@ -86,9 +116,10 @@ fn silver(grid: &Grid<Tile>) -> usize {
 
 fn main() -> io::Result<()> {
     let input = read_input()?;
-    let grid = parse(&input, 1024);
+    let silver_grid = parse(&input, 1024);
 
-    println!("silver: {}", silver(&grid));
+    println!("silver: {:?}", solve(&silver_grid));
+    println!("gold: {:?}", gold(corruptor(&input)));
 
     Ok(())
 }
